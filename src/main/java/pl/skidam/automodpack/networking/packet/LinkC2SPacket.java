@@ -44,39 +44,40 @@ import java.util.function.Consumer;
 import static pl.skidam.automodpack_common.GlobalVariables.*;
 
 public class LinkC2SPacket {
-    public static CompletableFuture<PacketByteBuf> receive(MinecraftClient client, ClientLoginNetworkHandler handler, PacketByteBuf buf, Consumer<GenericFutureListener<? extends Future<? super Void>>> genericFutureListenerConsumer) {
-        String packetContentJson = buf.readString(32767);
-        LoginPacketContent loginPacketContent = LoginPacketContent.fromJson(packetContentJson);
+	public static CompletableFuture<PacketByteBuf> receive(MinecraftClient client, ClientLoginNetworkHandler handler, PacketByteBuf buf, Consumer<GenericFutureListener<? extends Future<? super Void>>> genericFutureListenerConsumer) {
+		String packetContentJson = buf.readString(32767);
+		LoginPacketContent loginPacketContent = LoginPacketContent.fromJson(packetContentJson);
 
-        LOGGER.info("Received link packet from server! " + loginPacketContent.link);
-        ClientLink = loginPacketContent.link;
+		LOGGER.info("Received link packet from server! " + loginPacketContent.link);
+		ClientLink = loginPacketContent.link;
 
-        String modpackFileName = loginPacketContent.link.replaceFirst("(https?://)", ""); // removes https:// and http://
-        modpackFileName = modpackFileName.replace(":", "-"); // replaces : with -
-        Path modpackDir = Paths.get(modpacksDir + File.separator + modpackFileName);
+		String modpackFileName = loginPacketContent.link.replaceFirst("(https?://)", ""); // removes https:// and http://
+		modpackFileName = modpackFileName.replace(":", "-"); // replaces : with -
+		Path modpackDir = Paths.get(modpacksDir + File.separator + modpackFileName);
 
-        clientConfig.selectedModpack = modpackFileName;
-        ConfigTools.saveConfig(clientConfigFile, clientConfig);
+		clientConfig.selectedModpack = modpackFileName;
+		ConfigTools.saveConfig(clientConfigFile, clientConfig);
 
-        Jsons.ModpackContentFields serverModpackContent = ModpackUtils.getServerModpackContent(loginPacketContent.link);
+		Jsons.ModpackContentFields serverModpackContent = ModpackUtils.getServerModpackContent(loginPacketContent.link);
 
-        serverModpackContent.automodpackVersion = loginPacketContent.automodpackVersion;
-        serverModpackContent.mcVersion = loginPacketContent.mcVersion;
-        serverModpackContent.modpackName = loginPacketContent.modpackName;
-        serverModpackContent.loader = loginPacketContent.loader;
-        serverModpackContent.loaderVersion = loginPacketContent.loaderVersion;
+		serverModpackContent.automodpackVersion = loginPacketContent.automodpackVersion;
+		serverModpackContent.mcVersion = loginPacketContent.mcVersion;
+		serverModpackContent.modpackName = loginPacketContent.modpackName;
+		serverModpackContent.loader = loginPacketContent.loader;
+		serverModpackContent.loaderVersion = loginPacketContent.loaderVersion;
 
-        String isUpdate = ModpackUtils.isUpdate(serverModpackContent, modpackDir);
+		Boolean isUpdate = ModpackUtils.isUpdate(serverModpackContent, modpackDir);
 
-        if ("true".equals(isUpdate)) {
-            // Disconnect immediately
-            ((ClientConnectionAccessor) ((ClientLoginNetworkHandlerAccessor) handler).getConnection()).getChannel().disconnect();
-            new ModpackUpdater(serverModpackContent, loginPacketContent.link, modpackDir);
-        }
+		if (Boolean.TRUE.equals(isUpdate)) {
+			// Disconnect immediately
+			((ClientConnectionAccessor) ((ClientLoginNetworkHandlerAccessor) handler).getConnection()).getChannel().disconnect();
+			new ModpackUpdater(serverModpackContent, loginPacketContent.link, modpackDir);
+		}
 
-        PacketByteBuf response = PacketByteBufs.create();
-        response.writeString(Objects.requireNonNullElse(isUpdate, "null"), 32767);
+		PacketByteBuf response = PacketByteBufs.create();
 
-        return CompletableFuture.completedFuture(response);
-    }
+		response.writeString(Objects.requireNonNullElse(String.valueOf(isUpdate), "null"), 32767);
+
+		return CompletableFuture.completedFuture(response);
+	}
 }
